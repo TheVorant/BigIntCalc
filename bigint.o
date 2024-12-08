@@ -1,0 +1,1077 @@
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <sstream>
+#include "BigInt.h"
+
+using namespace std;
+
+BigInt::BigInt()
+{
+  cap = 0;
+  num_dig = 0;
+  isNeg = false;
+  array = NULL;
+}
+
+void BigInt::RemZeros()
+{
+  for (int i = num_dig - 1; i > 0 && array[i] == 0; i --)
+  {
+    num_dig = num_dig - 1;
+  }
+}
+  
+BigInt::BigInt(const string & s) : cap(0), num_dig(0), isNeg(false), array(NULL)
+{ 
+  operator=(s); 
+}
+
+
+BigInt::BigInt(const BigInt & other) : cap(0), num_dig(0), isNeg(false), array(NULL)
+{
+  operator=(other);
+}
+
+
+BigInt & BigInt::operator=(const BigInt & other)
+{
+  if (this != &other) 
+  {
+    digit *tempArray = new digit[other.cap];
+    for (int i = 0; i < other.num_dig; i++) 
+    {
+      tempArray[i] = other.array[i];
+    }
+    delete[] array;
+    array = tempArray;
+    cap = other.cap;
+    num_dig = other.num_dig;
+    isNeg = other.isNeg;
+  }
+  return *this;
+}
+
+
+BigInt & BigInt::operator=(const string & s)
+{
+  cap = s.length();
+  num_dig = cap;
+  array = new digit[cap];
+  isNeg = false;
+  int push = 0;
+          
+  if(s[0] == '-')
+  {
+    push = 1;
+    num_dig -= 1;
+    isNeg = true;
+  }
+  else if(s[0] == '+')
+  {
+    num_dig -= 1;
+    push = 1;
+  }
+          
+  for (int i = 0 + push; i < cap; i ++)
+  {
+
+    if(s[i] >= '0' && s[i] <= '9')
+    { 
+      array[cap - 1 - i] = s[i] - '0';
+    }
+    else
+    {
+
+      try
+      {
+        throw runtime_error("Invalid digit");
+      }
+      catch(exception e)
+      {
+        break; 
+      }
+
+    }             
+  }
+  RemZeros();        
+  return * this;
+}
+    
+BigInt::~BigInt()
+{ 
+  delete[] array; 
+}
+
+
+void BigInt::print(ostream & out)
+{
+      
+  for (int i = 0; i < num_dig; i ++)
+  {     
+    out << (int)array[num_dig - 1 - i];   
+  }
+      
+}
+
+
+void BigInt::NicePrint(ostream & out)
+{
+  if (isNeg == true)
+  {
+    out << "-";
+  }
+  else
+  {
+    out << " ";
+  }
+              
+  for (int i = 0; i < num_dig; i ++)
+  {     
+    out << (int)array[num_dig - 1 - i];
+           
+    if ((i + 1) % 50 == 0 && i != 0)
+    {
+      out << "\n ";
+    }          
+  }
+  out << "\n";
+}
+
+
+
+void BigInt::size_up()
+{ 
+  if (cap <= 0)
+  {
+    cap = 1;
+  }
+  else
+  {
+    cap *= 3;
+  }
+          
+  digit * newarray = new digit[cap];
+          
+  for (int i = 0; i < num_dig; i ++)
+  {       
+    newarray[i] = array[i];     
+  }
+  delete[] array;
+  array = newarray; 
+}
+
+
+int BigInt::get(int i)
+{
+  if (i < num_dig && i >= 0)
+  {
+    return array[i];
+  }
+  else 
+    return 0;
+}
+
+void BigInt::set(const int index,const char value) 
+{
+  if (index < 0)
+  {
+    throw runtime_error("That doesnt exist");
+  }
+  else if (index < num_dig)
+  {
+    array[index] = value;
+  }
+  else if (index < cap)
+  {
+    while (num_dig - 1 < index)
+    {
+      array[num_dig] = 0;
+      num_dig += 1;
+    }
+    array[index] = value;
+  }
+  else if (index >= cap)
+  {
+    while (index >= cap)
+    {
+      size_up();
+    }
+
+    while (num_dig - 1 < index)
+    {
+      array[num_dig] = 0;
+      num_dig += 1;
+    }
+    array[index] = value;           
+  }
+}
+
+void BigInt::clearbig()
+{ 
+  num_dig = 0;
+  isNeg = false; 
+}
+
+
+void BigInt::uadd(BigInt a, BigInt b, BigInt& r) 
+{
+  r.clearbig();
+  int carry = 0, n = max(a.num_dig, b.num_dig);
+
+  for (int i = 0; i < n || carry > 0; i++) 
+  {
+    int sum = a.get(i) + b.get(i) + carry;
+
+    if (sum >= 10) 
+    {
+      r.set(i, sum - 10); 
+      carry = 1;
+    }  
+    else 
+    {
+      r.set(i, sum); 
+      carry = 0;
+    }
+  }
+}
+
+int BigInt::compare(BigInt & a, BigInt & b)
+{
+  if(a.num_dig > b.num_dig)
+  {
+    if(a.isNeg)
+    {
+      return -1;
+    }
+    else
+    {
+      return 1;
+    }
+  }
+  else if (a.num_dig <  b.num_dig)
+  {
+    if(b.isNeg)
+    {
+      return 1;
+    }
+    else
+    {
+      return -1;
+    }
+  }
+  else
+  {
+    for (int i = a.num_dig - 1; i >= 0; i --)
+    {
+      if (a.isNeg && !b.isNeg)
+      {
+        return -1;
+      }
+      else if (!a.isNeg && b.isNeg)
+      {
+        return 1;
+      } 
+      else if (a.array[i] > b.array[i])
+      {
+        return 1;
+      }
+      else if (a.array[i] < b.array[i])
+      {
+        return -1;
+      }
+    }         
+  }
+  return 0;
+}
+
+
+
+
+void BigInt::usub(BigInt a, BigInt b, BigInt& r) 
+{
+      
+  r.clearbig(); 
+  if(r.isNeg == true)
+  {
+    r.clearbig();
+    r.isNeg = false;
+  }
+          
+  int borrow = 0, n = max(a.num_dig, b.num_dig);
+  int flip = 0;
+           
+  for (int i = 0; i < n; i++) 
+  {
+    int diff = a.get(i) - b.get(i) - borrow;
+    if (diff < 0) 
+    {
+      diff += 10;
+      borrow = 1;
+    } 
+    else 
+    {
+      borrow = 0;
+    }
+    r.set(i, diff); 
+  }
+  
+  if (borrow >= 1)
+  {
+    borrow = 0;
+    for (int i = 0; i < r.num_dig; i++) 
+    {
+      int diff = 9 - r.get(i) - borrow;
+      if (diff < 0) 
+      {
+        diff += 10;
+        borrow = 1;
+      } 
+      else 
+      {
+        borrow = 0;
+      }
+      r.set(i, diff);
+    }
+          
+    BigInt helper1 = r;
+    helper1.isNeg = false;
+    BigInt helper("1");
+    uadd(helper, helper1, r);
+    r.isNeg = true;                     
+  }
+               
+  r.RemZeros();
+}
+
+
+
+
+BigInt BigInt::operator+(BigInt& b) 
+{
+  BigInt result;
+
+  if (!isNeg && !b.isNeg) 
+  {
+    uadd(*this, b, result);
+  } 
+  else if (!isNeg && b.isNeg) 
+  {
+    usub(*this, b, result);
+  } 
+  else if (isNeg && !b.isNeg) 
+  {
+    usub(b, *this, result);
+  } 
+  else if (isNeg && b.isNeg) 
+  {
+    uadd(*this, b, result);
+    result.isNeg = true;
+  }
+  return result;
+}
+     
+
+BigInt BigInt::operator-(BigInt& b) 
+{
+  BigInt result;
+
+  if (!isNeg && !b.isNeg) 
+  {
+    usub(*this, b, result);
+  }
+  else if (!isNeg && b.isNeg) 
+  {
+    uadd(*this, b, result);
+  }
+  else if (isNeg && !b.isNeg) 
+  {
+    uadd(*this, b, result);
+    result.isNeg = true;
+  }
+  else if (isNeg && b.isNeg) 
+  {
+    usub(b, *this, result);
+  }
+  return result;
+}
+      
+BigInt BigInt::operator*(BigInt& b)
+{ 
+  BigInt result;
+  result.set(num_dig + b.num_dig, 0);
+
+  BigInt tempProduct;
+
+  for (int i = 0; i < num_dig; ++i) 
+  {
+    tempProduct.clearbig();
+
+    int carry = 0;
+    for (int j = 0; j < b.num_dig; ++j) 
+    {
+      int product = array[i] * b.array[j] + carry;
+      carry = product / 10;
+      char digitValue = (product % 10); 
+
+      tempProduct.set(i + j, digitValue);
+    }
+
+    if (carry > 0)
+    { 
+      tempProduct.set(i + b.num_dig, carry);
+    }
+    uadd(result, tempProduct, result); 
+  }
+
+  result.RemZeros();
+
+  if(isNeg == true && b.isNeg == true)
+  {
+    result.isNeg = false;
+  }
+  else if(isNeg == true || b.isNeg == true)
+  {
+    result.isNeg = true;
+  }
+     
+  return result;                           
+}      
+
+
+
+BigInt BigInt::operator*(int b) 
+{
+  BigInt result;
+  result.set(num_dig + 10, 0);
+
+  int carry = 0;
+  for (int i = 0; i < num_dig; ++i) 
+  {
+    int product = array[i] * b + carry;
+    carry = product / 10;
+    char digitValue = (product % 10);
+
+    result.set(i, digitValue);
+  }
+
+  int k = num_dig;
+  while (carry > 0) 
+  {
+    char digitValue = (carry % 10);
+    result.set(k++, digitValue);
+    carry /= 10;
+  }
+
+  result.RemZeros(); 
+  result.isNeg = (isNeg != (b < 0)); 
+
+  return result;
+}
+
+
+BigInt BigInt::factorial() 
+{
+  BigInt result("1");
+  if (isNeg) 
+  {
+    throw runtime_error("Invalid");
+  }
+  int val = 0;
+  for (int i = num_dig - 1; i >= 0; i--)
+  {
+    val = val * 10 + array[i];
+  }
+  
+  while (val > 1) 
+  {
+    result = result * val; 
+    val --; 
+  }
+  return result;
+}
+
+
+
+BigInt BigInt::operator+=(BigInt& b) 
+{
+  *this = *this + b;
+  return *this;
+}
+
+BigInt BigInt::operator-=(BigInt& b) 
+{
+  *this = *this - b;
+  return *this;
+}
+
+
+BigInt BigInt::operator*=(BigInt& b) 
+{
+  *this = *this * b;
+  return *this;
+}
+
+
+BigInt BigInt::operator/=(BigInt& b) 
+{
+  *this = divide(b, "/");
+  return *this;
+}
+
+BigInt BigInt::operator%=(BigInt& b) 
+{
+  *this = divide(b, "%");
+  return *this;
+}
+
+void BigInt::plusplus() 
+{
+  *this = *this + *this;
+}
+
+void BigInt::div(int o, BigInt& res, BigInt& re)
+{
+  int carry = 0;
+  int value = 0;
+  for (int i = num_dig - 1; i >= 0; i --)
+  {
+    value = (carry * 10 + array[i])/ o; 
+    carry = (carry + array[i])% o;
+    res.set(i, value);
+  }
+
+  int place = 0;
+  while(carry != 0)
+  {
+    re.set(place, carry % 10);
+    carry = carry / 10;
+    place += 1;
+  }
+  
+}
+
+BigInt BigInt::divideByInt(int i, string m)
+{
+  if(i == 0)
+  {
+    throw runtime_error("You can't divide by zero");
+  }
+  BigInt Result, Remainder;
+  div(i , Result, Remainder);
+  Result.RemZeros();
+  Remainder.RemZeros();
+  return Result;
+}
+
+BigInt BigInt::multi10(int power, BigInt& div)
+{
+    BigInt result = div;
+    for (int i = 0; i < power; i++) 
+    {
+      result = result * 10;  
+    }
+    return result;
+}
+
+BigInt BigInt::divide(BigInt& divisor, string m) 
+{
+    if (divisor.num_dig == 1 && divisor.array[0] == 0) 
+    {
+      cout << "Can't Divide by Zero\n";
+      return BigInt("0");
+    }
+    else if (num_dig == 1 && array[0] == 0) 
+    {
+      return BigInt("0");
+    }
+
+    BigInt quotient, remainder;
+    BigInt tempDividend = *this;
+    bool neg_num = false;
+    bool neg_num2 = false;
+    if(tempDividend.isNeg == true)
+    {
+      neg_num = true;
+      tempDividend.isNeg = false;
+    }
+
+    if(divisor.isNeg == true)
+    {
+      neg_num2 = true;
+      divisor.isNeg = false;
+    }
+    
+    if(compare(tempDividend,divisor) < 0)
+    {
+      return *this;
+    }
+    
+    int shift = tempDividend.num_dig - divisor.num_dig;
+
+    if(shift >= 0) 
+    {
+      BigInt tempDivisor;
+      while (shift >= 0) 
+      {
+        tempDivisor = multi10(shift, divisor);
+        int value = 0;
+        while (compare(tempDividend, tempDivisor) >= 0) 
+        {
+          tempDividend -= tempDivisor;
+          value++;
+        }
+        quotient.set(shift, value);
+        shift--; 
+      }
+      quotient.RemZeros();
+    }
+    else 
+    {
+      quotient.set(0, 0);
+    }
+
+    
+    if(neg_num == true || neg_num2 == true)
+    {
+      if(neg_num == true && neg_num2 == true)
+      {
+        quotient.isNeg = false;
+        tempDividend.isNeg = false;
+      }
+      else
+      {
+        quotient.isNeg = true;
+        tempDividend.isNeg = true;
+      }
+    }
+
+    if (m == "/") 
+    {
+      return quotient;
+    } 
+    else 
+    {
+      return tempDividend;
+    }
+}
+
+
+
+ostream & operator<<(ostream & out, BigInt & value)
+{
+  value.NicePrint(out);     
+  return out;   
+}
+
+istream& operator>>(istream& in, BigInt& b) 
+{
+  string line;
+  in >> line;
+  b = line; 
+  return in;
+  
+}
+
+
+template<typename T> class vector 
+{ 
+  protected:
+  
+      int capped, nums;
+      T* data;
+      
+  public:
+  
+      vector()
+      { 
+        capped = 0;
+        nums = 0;
+        data = NULL; 
+      }
+
+      vector(int v)
+      { 
+        capped = v;
+        nums = 0;
+        data = new T[capped]; 
+      }
+
+      vector(const vector<T> & p)
+      { 
+        capped = p.capped;
+        nums = p.nums;
+        data = new T[capped];
+          
+        for (int i = 0; i < nums; i++)
+        {
+          data[i] = p.data[i];
+        } 
+      }
+
+      vector(int v, T array1[])
+      { 
+        capped = v;
+        nums = v;
+        data = new T[capped];
+          
+        for (int i = 0; i < v; i++)
+        { 
+          data[i] = array1[i]; 
+        }  
+      }
+
+      ~vector()
+      { 
+        delete[] data; 
+      }
+
+      void push_back(T p)
+      { 
+        if (nums >= capped)
+        {
+          grow();
+        }
+        data[nums] = p;
+        nums += 1; 
+      }
+
+      void pop_back()
+      { 
+        nums -= 1; 
+      }
+
+      T back()
+      { 
+        if (nums <= 0)
+        {
+          throw runtime_error("empty vector");
+        }
+        return data[nums - 1]; 
+      }
+
+      void grow()
+      { 
+        if (capped <= 0)
+        {
+          capped = 1;
+        }
+        else
+        {
+          capped *= 3;
+        }
+          
+        T* newdata = new T[capped];
+          
+        for (int i = 0; i < nums; i++)
+        {
+          newdata[i] = data[i];
+        }
+          
+        delete[] data; data = newdata;
+      }
+
+      T pop()
+      { 
+        if (nums <= 0)
+        {
+          throw runtime_error("empty vector");
+        }
+          
+        T popped = data[nums - 1];
+        nums -= 1;
+        return popped; 
+      }
+
+      int size()
+      { 
+        return nums; 
+      }
+
+      void clear()
+      { 
+        nums = 0; 
+      }
+
+      T at(int p)
+      {   
+        return data[p]; 
+      }
+
+      T & operator[](int i)
+      { 
+        if (i < 0 || i >= nums)
+        {
+          throw runtime_error("Out of Range");
+        }
+        return data[i]; 
+      }
+
+      bool empty()
+      { 
+        return (nums == 0);
+      }
+
+      T reduce(T f(T, T), T p)
+      { 
+        T red = p;
+        for (int i = 0; i < nums; i++)
+        { 
+          red = f(data[i], red); 
+        }
+          
+        return red; 
+      }
+
+      void apply(void f(T&))
+      { 
+        for (int i = 0; i < nums; i++)
+        { 
+          f(data[i]);               
+        } 
+      }
+
+      void apply(void f(T *))
+      { 
+        for (int i = 0; i < nums; i++)
+        {
+          f(&data[i]); 
+        } 
+      }
+
+};
+         
+
+
+vector<string> varName;
+vector<BigInt> varValue;
+
+void rpn(istream& in)
+{
+
+  vector<BigInt> fatstack;
+
+  string solver;
+  BigInt num1;
+  BigInt num2;
+
+  BigInt number;
+
+
+  while(true)
+  {
+    in >> solver; 
+    if(in.fail())
+    {
+
+      if(fatstack.size() >= 2)
+      {
+        cout << "Way to many numbers\n\n";
+        fatstack.clear();
+      }
+      else if(fatstack.size() == 0)
+      {
+        cout << "There are not enough number\n\n";
+      }
+      else
+      {
+        BigInt res = fatstack.back();
+        fatstack.pop_back();
+        cout << res << "\n\n";
+      }      
+      break;
+    }
+    else if(solver == "+" || solver == "-" || solver  == "*" || solver == "!" || solver == "?" 
+           || solver == "/" || solver == "%" || solver == "++")
+    {
+     
+      if((solver == "!" || solver == "++") && fatstack.size() >= 1)
+      {
+        if (solver == "!")
+        {
+          num1 = fatstack.pop();
+     
+          try
+          {    
+            BigInt fact = num1.factorial();
+            fatstack.push_back(fact); 
+          }  
+
+          catch(exception e)
+          {
+            cout << "Cant factorial negative\n\n";
+            break;
+          }
+        }
+        else
+        {
+          num1 = fatstack.pop();
+          num1.plusplus();
+          fatstack.push_back(num1);
+        }
+      }
+      else if(fatstack.size() <= 1)
+      {
+        cout << "You added way too many operators there bro\n\n";
+        break;
+      }
+      else
+      {
+        num1 = fatstack.pop();
+        num2 = fatstack.pop();
+
+        if(solver == "+")
+        {
+          fatstack.push_back(num2 + num1);
+        }
+        else if(solver == "-")
+        {
+          fatstack.push_back(num2 - num1);
+        }
+        else if(solver == "*")
+        {
+          fatstack.push_back(num2 * num1);
+        }
+        else if(solver == "/")
+        {
+          fatstack.push_back(num2.divide(num1, "/"));
+        }
+        else if(solver == "%")
+        {
+          fatstack.push_back(num2.divide(num1, "%"));
+        }
+        else if(solver == "?")
+        {
+
+          int comp = num1.compare(num2, num1);
+
+          num1.clearbig();
+          if (comp == 1)
+          {
+            num1 = "1";
+          }
+          else if (comp == -1)
+          {
+            num1 = "-1";
+          }
+          else
+          {
+            num1 = "0";
+          }
+          
+          fatstack.push_back(num1);
+          
+        }
+      }
+    }
+    else
+    {
+      if (solver == "=" || solver == "%=" || solver == "+=" || solver == "-=" || solver == "/=")
+      {
+        string check = solver;
+        in >> solver;
+        if((solver[0] >= 'a' && solver[0] <= 'z') || (solver[0] >= 'A' && solver[0] <= 'Z'))
+        {
+          string name = solver;
+          bool variableFound = false;
+          bool variequ = false;
+          int index = 0;
+
+          for (int i = 0; i < varName.size(); ++i) 
+          {
+             if (varName[i] == name) 
+             {  
+               variableFound = true;
+               index = i;
+               break;
+             }
+          }
+          
+          if((check == "%=" || check == "+=" || check == "-=" || check == "/=") && variableFound)
+          {
+            if(fatstack.size() < 1 || fatstack.size() > 1)
+            {
+              cout << "You added way too many operators there bro\n\n";
+              break;
+            }
+
+            if(check == "%=")
+            {
+              num1 = fatstack.pop();
+              varValue[index] %= num1;
+              fatstack.push_back(varValue[index]);
+            }
+            else if(check == "+=")
+            {
+              num1 = fatstack.pop();
+              varValue[index] += num1;
+              fatstack.push_back(varValue[index]);
+            }
+            else if(check == "-=")
+            {
+              num1 = fatstack.pop();
+              varValue[index] -= num1;
+              fatstack.push_back(varValue[index]);
+            }
+            else if(check == "/=")
+            {
+              num1 = fatstack.pop();
+              varValue[index] /= num1;
+              fatstack.push_back(varValue[index]);
+            }
+          }
+          
+          if (variableFound) 
+          {       
+             varValue[index] = fatstack.back();                   
+          } 
+          else
+          {
+            varName.push_back(name);
+            varValue.push_back(fatstack.back());   
+          }
+        }
+        else
+        {
+          cout <<" You have not defined a variable properly\n\n";
+          break;
+        }
+      }
+      else if((solver[0] >= 'a' && solver[0] <= 'z') || (solver[0] >= 'A' && solver[0] <= 'Z'))
+      {
+        string name = solver;
+        bool variableFound = false;
+        int index = 0;
+          
+        for (int i = 0; i < varName.size(); ++i) 
+        {
+          if (varName[i] == name) 
+          {  
+            variableFound = true;
+            index = i;
+            break;
+          }
+        }
+        
+        if (variableFound) 
+        { 
+          fatstack.push_back(varValue[index]);                   
+        } 
+        else
+        {
+          cout << "You have not defined a variable\n\n";
+          break;
+        }
+      }
+      else
+      {
+        number.clearbig();
+        number = solver;
+        fatstack.push_back(number);
+      } 
+
+    }
+
+  }
+
+}
